@@ -1,0 +1,16 @@
+TICKERS = [
+    "ROSN",
+    "TATN",
+    "LKOH",
+    "NVTK",
+    "SMLT",
+    "PIKK",
+    "RUAL",
+    "GMKN",
+    "PLZL",
+    "VTBR",
+    "SBER",
+    "T",
+    "EUTR",
+    "IRAO",
+]
