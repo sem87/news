@@ -37,7 +37,7 @@ venv.bak/
 
 informing/
 loGgGi.log
-
+ppp
 # === SQLite ===
 # Игнорируем файлы БД, если они генерируются локально
 *.sqlite3
