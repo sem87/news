@@ -1,0 +1,53 @@
+[tool.ruff]
+# Длина строки
+line-length = 120
+# Версия Python
+target-version = "py312"
+
+# Какие файлы проверять
+include = ["*.py", "*.pyi"]
+extend-exclude = [
+    ".venv", "venv", "env",
+    "alembic", "docker", "logs",
+    "__pycache__", ".git", ".idea", ".vscode",
+    "build", "dist"
+]
+
+[tool.ruff.lint]
+# Какие правила включать
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (сортировка импортов)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+]
+
+# Какие правила игнорировать
+ignore = [
+    "E203",  # пробел перед ':' (стиль Black) — разрешаем
+    "E501",  # длина строки — контролируется line-length выше
+    "N805"
+]
+
+# Авто-исправление при check --fix
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+# === Настройки совместимости с Black ===
+force-wrap-aliases = true
+combine-as-imports = true
+split-on-trailing-comma = true
+lines-after-imports = 2
+
+[tool.ruff.format]
+# Настройки форматирования (как Black)
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
