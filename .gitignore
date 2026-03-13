@@ -58,6 +58,8 @@ books.db
 .env.wallet
 env.wallet
 .env.news
+.env.example
+env.example
 env.news
 token.pickle
 credentials.json
