@@ -126,23 +126,17 @@ def prepare_llm_payload(
     return {"source": "MOEX ISS", "interval": "1d", "series": series}
 
 
-def analyze_with_llm(
-    prepared_data: dict[str, Any],
-    *,
-    model: str | None = None,
-) -> str:
+def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
     """
     Send prepared MOEX data to OpenAI and get analysis.
     Requires OPENAI_API_KEY in .env.
     Optional: OPENAI_MODEL in .env (or pass model=...).
     """
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is missing. Create .env based on .env.example")
-
-    final_model = model or os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
-    client = OpenAI(api_key=api_key)
+    load_dotenv(".env.news")
+    client = OpenAI(
+        api_key=os.getenv("BOTHUB_API_KEY"),
+        base_url=os.getenv("BOTHUB_BASE_URL"),  # <-- Это направляет запросы в BotHub
+    )
 
     system = (
         "You are a financial analyst. Provide a concise Russian analysis based only on the "
@@ -160,7 +154,7 @@ def analyze_with_llm(
     )
 
     resp = client.chat.completions.create(
-        model=final_model,
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
