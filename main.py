@@ -37,19 +37,20 @@ class Candle:
 
 
 def _iso(d: date) -> str:
+    """Конвертирует дату в ISO формат"""
     return d.isoformat()
 
 
 def get_candles(ticker: str, days: int = 7, timeout_s: float = 10.0) -> list[Candle]:
     """
-    Fetch daily candles from MOEX ISS for the last `days` days (inclusive).
-    Uses:
-      - from: today - days
-      - to: today
-      - interval: 24 (daily)
+    Получает ежедневные свечи с MOEX ISS за последние `days` дней (включительно).
+    Использует:
+      - from: сегодня - days
+      - to: сегодня
+      - interval: 24 (ежедневный)
     """
     if days <= 0:
-        raise ValueError("days must be positive")
+        raise ValueError("days должно быть положительным")
 
     today = date.today()
     start = today - timedelta(days=days)
@@ -60,38 +61,38 @@ def get_candles(ticker: str, days: int = 7, timeout_s: float = 10.0) -> list[Can
     try:
         resp = requests.get(url, params=params, timeout=timeout_s)
     except requests.Timeout as e:
-        raise MoexError(f"MOEX timeout for {ticker}") from e
+        raise MoexError(f"Timeout для {ticker}") from e
     except requests.RequestException as e:
-        raise MoexError(f"MOEX request error for {ticker}: {e}") from e
+        raise MoexError(f"Ошибка запроса для {ticker}: {e}") from e
 
     if resp.status_code == 404:
-        raise TickerNotFoundError(f"Ticker {ticker} not found (HTTP 404)")
+        raise TickerNotFoundError(f"Тикер {ticker} не найден (HTTP 404)")
 
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
-        raise MoexError(f"MOEX HTTP error for {ticker}: {resp.status_code}") from e
+        raise MoexError(f"Ошибка HTTP для {ticker}: {resp.status_code}") from e
 
     try:
         payload = resp.json()
     except ValueError as e:
-        raise MoexError(f"MOEX returned non-JSON for {ticker}") from e
+        raise MoexError(f"MOEX вернул не JSON для {ticker}") from e
 
     candles = payload.get("candles", {})
     columns: list[str] = candles.get("columns") or []
     data: list[list[Any]] = candles.get("data") or []
 
     if not columns:
-        raise MoexError(f"Unexpected MOEX response shape for {ticker}: missing candles.columns")
+        raise MoexError(f"Неожиданная форма ответа от MOEX для {ticker}: отсутствуют candles.columns")
 
     if not data:
-        raise TickerNotFoundError(f"No candles returned for {ticker} in {_iso(start)}..{_iso(today)}")
+        raise TickerNotFoundError(f"Нет свечей для {ticker} в {_iso(start)}..{_iso(today)}")
 
     idx = {name: i for i, name in enumerate(columns)}
     required = ["begin", "end", "open", "close", "high", "low", "value", "volume"]
     missing = [c for c in required if c not in idx]
     if missing:
-        raise MoexError(f"Unexpected MOEX columns for {ticker}, missing: {missing}")
+        raise MoexError(f"Неожиданные столбцы от MOEX для {ticker}, отсутствуют: {missing}")
 
     out: list[Candle] = []
     for row in data:
@@ -109,7 +110,7 @@ def get_candles(ticker: str, days: int = 7, timeout_s: float = 10.0) -> list[Can
                 )
             )
         except (TypeError, ValueError) as e:
-            raise MoexError(f"Bad candle row for {ticker}: {row}") from e
+            raise MoexError(f"Неправильная строка свечи для {ticker}: {row}") from e
 
     return out
 
@@ -118,7 +119,7 @@ def prepare_llm_payload(
     candles_by_ticker: dict[str, list[Candle]],
 ) -> dict[str, Any]:
     """
-    Prepare compact data for LLM: close prices and volumes per day.
+    Подготавливает компактные данные для LLM: цены закрытия и объемы за день.
     """
     series: dict[str, list[dict[str, Any]]] = {}
     for ticker, candles in candles_by_ticker.items():
@@ -128,9 +129,8 @@ def prepare_llm_payload(
 
 def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
     """
-    Send prepared MOEX data to OpenAI and get analysis.
-    Requires OPENAI_API_KEY in .env.
-    Optional: OPENAI_MODEL in .env (or pass model=...).
+    Отправляет подготовленные данные MOEX в OpenAI и получает анализ.
+    Требует BOTHUB_API_KEY и BOTHUB_BASE_URL в .env.news
     """
     load_dotenv(".env.news")
     client = OpenAI(
@@ -139,8 +139,8 @@ def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
     )
 
     system = (
-        "You are a financial analyst. Provide a concise Russian analysis based only on the "
-        "provided OHLC-derived series (close) and volumes. Avoid hallucinating news."
+        "Ты финансовый аналитик. Предоставь краткое русское аналитическое заключение только на основе "
+        "представленных данных OHLC-серии (close) и объемов. Избегай hallucinating news."
     )
     user = (
         "Проанализируй акции Мосбиржи по дневным данным за последнюю неделю.\n"
@@ -159,7 +159,7 @@ def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        temperature=0.4,
+        temperature=0.6,
     )
 
     return resp.choices[0].message.content or ""
