@@ -9,10 +9,21 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+from pyrogram import Client as TelegramClient
+from pyrogram.enums import ParseMode
 
 from config import TICKERS
 from news_collector import collect_news_for_tickers
 
+
+load_dotenv(".env.news")
+TELEGRAM_CLIENT = TelegramClient(
+    name="SEM",
+    api_id=os.getenv("API_IDDD"),
+    api_hash=os.getenv("TELEGTOKENG"),
+    parse_mode=ParseMode.HTML,
+)
+group = os.getenv("GROUPT")
 
 MOEX_CANDLES_URL = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/{ticker}/candles.json"
 
@@ -185,6 +196,19 @@ def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
     return resp.choices[0].message.content or ""
 
 
+def send_telegram(
+    messnew: str,
+    telegram_cl: TelegramClient = TELEGRAM_CLIENT,  # ← Глобальный клиент
+    group: str | None = None,
+) -> None:
+    """ОТПРАВЛЯЕТ В ТЕЛЕГРАММ"""
+    try:
+        with telegram_cl:
+            telegram_cl.send_message(group, f"{messnew}")
+    except Exception as e:
+        print(f"send_telegram() ошибка в телеграмм: Ex as e : {e}")
+
+
 def main() -> None:
     candles_by_ticker: dict[str, list[Candle]] = {}
     errors: list[tuple[str, str]] = []
@@ -219,6 +243,7 @@ def main() -> None:
         # print(analysis)
         # =================анализ ИИ  =====================================
         print(prepared)
+        send_telegram(messnew=prepared)
 
     except RuntimeError as e:
         print(f"\nАнализ с помощью LLM пропущен: {e}\n")

@@ -75,3 +75,12 @@ SEM.session
 .DS_Store
 Thumbs.db
 semnews.txt
+# === Docker (если используете) ===
+.dockerignore
+.env
+.env.local
+.env.ter
+.env.term
+.env.*.local
+config/local_settings.py
+SEM.session
