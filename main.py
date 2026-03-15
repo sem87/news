@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from config import TICKERS
+from news_collector import collect_news_for_tickers
 
 
 MOEX_CANDLES_URL = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/{ticker}/candles.json"
@@ -117,14 +118,26 @@ def get_candles(ticker: str, days: int = 7, timeout_s: float = 10.0) -> list[Can
 
 def prepare_llm_payload(
     candles_by_ticker: dict[str, list[Candle]],
+    news_by_ticker: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """
-    Подготавливает компактные данные для LLM: цены закрытия и объемы за день.
+    Подготавливает данные для LLM: свечи Мосбиржи + новости РБК по каждому тикеру.
     """
-    series: dict[str, list[dict[str, Any]]] = {}
+    series: dict[str, dict[str, Any]] = {}
     for ticker, candles in candles_by_ticker.items():
-        series[ticker] = [{"date": c.begin[:10], "close": c.close, "volume": c.volume} for c in candles]
-    return {"source": "MOEX ISS", "interval": "1d", "series": series}
+        entry: dict[str, Any] = {
+            "candles": [{"date": c.begin[:10], "close": c.close, "volume": c.volume} for c in candles],
+        }
+        if news_by_ticker and ticker in news_by_ticker:
+            # Для LLM оставляем date, title, summary, impact
+            entry["news"] = [
+                {"date": n["date"], "title": n["title"], "summary": n["summary"], "impact": n["impact"]}
+                for n in news_by_ticker[ticker]
+            ]
+        else:
+            entry["news"] = []
+        series[ticker] = entry
+    return {"source": "MOEX ISS + RBC", "interval": "1d", "series": series}
 
 
 def analyze_with_llm(prepared_data: dict[str, Any]) -> str:
@@ -192,17 +205,25 @@ def main() -> None:
     if not candles_by_ticker:
         raise SystemExit("Нет данных для анализа.")
 
-    prepared = prepare_llm_payload(candles_by_ticker)
+    # Сбор новостей РБК за те же 7 дней
+    try:
+        news_by_ticker = collect_news_for_tickers(days=7)
+    except Exception as e:
+        print(f"Новости не загружены (анализ только по свечам): {e}")
+        news_by_ticker = None
+
+    prepared = prepare_llm_payload(candles_by_ticker, news_by_ticker=news_by_ticker)
+
     try:
         # analysis = analyze_with_llm(prepared)
-        # анализ нейросетью
-        print(json.dumps(prepared, ensure_ascii=False, indent=2))
+        # print(analysis)
+        # =================анализ ИИ  =====================================
+        print(prepared)
+
     except RuntimeError as e:
         print(f"\nАнализ с помощью LLM пропущен: {e}\n")
         print("Подготовленные данные (JSON) для отправки в OpenAI вручную:\n")
         print(json.dumps(prepared, ensure_ascii=False, indent=2))
-        return
-    # print(analysis)
 
 
 if __name__ == "__main__":
