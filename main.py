@@ -194,14 +194,16 @@ def main() -> None:
 
     prepared = prepare_llm_payload(candles_by_ticker)
     try:
-        analysis = analyze_with_llm(prepared)
+        # analysis = analyze_with_llm(prepared)
+        print(json.dumps(prepared, ensure_ascii=False, indent=2))
     except RuntimeError as e:
         print(f"\nАнализ с помощью LLM пропущен: {e}\n")
         print("Подготовленные данные (JSON) для отправки в OpenAI вручную:\n")
         print(json.dumps(prepared, ensure_ascii=False, indent=2))
         return
-    print(analysis)
+    # print(analysis)
 
 
 if __name__ == "__main__":
     main()
+    # привет
