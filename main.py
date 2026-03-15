@@ -19,11 +19,12 @@ from news_collector import collect_news_for_tickers
 load_dotenv(".env.news")
 TELEGRAM_CLIENT = TelegramClient(
     name="SEM",
-    api_id=os.getenv("API_IDDD"),
+    api_id=os.getenv("ID"),
     api_hash=os.getenv("TELEGTOKENG"),
     parse_mode=ParseMode.HTML,
 )
 group = os.getenv("GROUPT")
+
 
 MOEX_CANDLES_URL = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/{ticker}/candles.json"
 
@@ -243,7 +244,7 @@ def main() -> None:
         # print(analysis)
         # =================анализ ИИ  =====================================
         print(prepared)
-        send_telegram(messnew=prepared)
+        # send_telegram(messnew=str(prepared.keys()))
 
     except RuntimeError as e:
         print(f"\nАнализ с помощью LLM пропущен: {e}\n")
