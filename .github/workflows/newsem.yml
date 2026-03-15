@@ -1,4 +1,4 @@
-name: translator CI/CD
+name: news CI/CD
 
 on:
   workflow_dispatch:
