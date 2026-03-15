@@ -195,6 +195,7 @@ def main() -> None:
     prepared = prepare_llm_payload(candles_by_ticker)
     try:
         # analysis = analyze_with_llm(prepared)
+        # анализ нейросетью
         print(json.dumps(prepared, ensure_ascii=False, indent=2))
     except RuntimeError as e:
         print(f"\nАнализ с помощью LLM пропущен: {e}\n")

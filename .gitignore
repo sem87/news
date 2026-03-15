@@ -74,3 +74,4 @@ SEM.session
 *.swo
 .DS_Store
 Thumbs.db
+semnews.txt

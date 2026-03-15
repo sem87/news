@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -22,7 +23,7 @@ from news_config import (
 
 
 # RSS РБК (главные новости, полный текст)
-RBK_RSS_URL = "https://rssexport.rbc.ru/rbcnews/news/30/full.rss"
+RBK_RSS_URL = "https://rssexport.rbc.ru/rbcnews/news/100/full.rss"
 
 # Таймаут запроса к РБК (сек)
 RBK_TIMEOUT = 15
@@ -273,11 +274,11 @@ def get_series_with_news(
 
 def main() -> None:
     """Точка входа при запуске: python news_collector.py"""
-    import json
 
     print("Сбор новостей РБК за последние 7 дней...")
     try:
         data = collect_news_for_tickers(days=NEWS_DAYS)
+        print(data)
         total = sum(len(v) for v in data.values())
         print(f"Всего привязок новостей по тикерам: {total}")
         for ticker in TICKERS:
@@ -285,11 +286,29 @@ def main() -> None:
             if n > 0:
                 print(f"  {ticker}: {n} новостей")
         print("\nРезультат (JSON):")
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+        s = json.dumps(data, ensure_ascii=False, indent=2)
+        print(s)
+        with open("semnews.txt", "w", encoding="utf-8") as f:
+            # 3. Добавляем заголовок с датой
+            f.write(f"=== Новости за {datetime.now().strftime('%Y-%m-%d %H:%M')} ===\n\n")
+
+            # 4. Записываем новости в красивом формате JSON
+            # ensure_ascii=False — чтобы русский текст не превратился в \u043f
+            # indent=2 — красивые отступы для читаемости
+            json.dump(s, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Ошибка: {e}")
         raise
 
 
 if __name__ == "__main__":
+    # s = fetch_rbk_rss(days=NEWS_DAYS, timeout=RBK_TIMEOUT)
+    # with open("semnews.txt", "w", encoding="utf-8") as f:
+    #     # 3. Добавляем заголовок с датой
+    #     f.write(f"=== Новости за {datetime.now().strftime('%Y-%m-%d %H:%M')} ===\n\n")
+
+    #     # 4. Записываем новости в красивом формате JSON
+    #     # ensure_ascii=False — чтобы русский текст не превратился в \u043f
+    #     # indent=2 — красивые отступы для читаемости
+    #     json.dump(s, f, ensure_ascii=False, indent=2)
     main()
