@@ -67,15 +67,17 @@ def message_to_dict(msg: dict) -> dict:
 
 def main_news_collector_rbk() -> None:
     """Точка входа при запуске: news_collector_RBK.py"""
-    logis.inf.info("=====НАЧАЛО ПАРСИНГА РБК RSS ======")
-    for rbc_rss_url in RBK_RSS_URL:
-        time.sleep(1)  # Пауза между тикерами
-        clean_posts = []
-        for msg in fetch_rbk_rss(rbc_rss_url=rbc_rss_url):
-            clean_posts.append(message_to_dict(msg=msg))  # добавляем в уже обработанные посты
+    try:
+        logis.inf.info("=====НАЧАЛО ПАРСИНГА РБК RSS ======")
+        for rbc_rss_url in RBK_RSS_URL:
+            time.sleep(1)  # Пауза между тикерами
+            clean_posts = []
+            for msg in fetch_rbk_rss(rbc_rss_url=rbc_rss_url):
+                clean_posts.append(message_to_dict(msg=msg))  # добавляем в уже обработанные посты
+                time.sleep(1)
             save_posts_with_check(clean_posts, filename=str(OUTPUT_FILE), signature_length=10)  # свер первые 10 симв
-            # print(message_to_dict(msg=msg))
-            time.sleep(1)
+    except Exception as e:
+        logis.err.info(f"main_news_collector_rbk в parser/news_collector_RBK точка входа: Exception as e : {e}")
 
 
 if __name__ == "__main__":

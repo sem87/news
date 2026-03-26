@@ -1,6 +1,7 @@
-# parser/t_pulse_parser
+# json_file/work_json.py
 import json
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from logi import logis
@@ -87,25 +88,33 @@ def save_posts_with_check(new_posts: list[dict], filename: str, signature_length
 # ============================================================
 # -------------НАЧАЛО СОРТИРОВКА JSON ПО ВРЕМЕНИ ---------------
 def sort_posts_by_date(input_file: str = OUTPUT_FILE, output_file: str = OUTPUT_FILE) -> list:
-    """
-    Загружает посты из файла, сортирует по дате (сначала новые) и сохраняет.
-
-    Args:
-        input_file: Путь к исходному файлу с постами
-        output_file: Путь к файлу для сохранения отсортированных постов
-
-    Returns:
-        Отсортированный список постов
-    """
-    # 1. Загружаем посты из файла
-    with open(input_file, encoding="utf-8") as f:
-        posts = json.load(f)
-    # 2. Сортируем по дате (убывание: новые сначала)
-    sorted_posts = sorted(posts, key=lambda x: x.get("date", ""), reverse=True)
-    # 3. Сохраняем обратно в файл
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(sorted_posts, f, ensure_ascii=False, indent=2)
-    return sorted_posts
+    """СОРТИРУЕТ ПОСТЫ ПО ДАТЕ (сначало новые) УДАЛЯЕТ ЕСЛИ БОЛЬШЕ 14 ДНЕЙ"""
+    try:
+        # 1. Загружаем посты из файла
+        with open(input_file, encoding="utf-8") as f:
+            posts = json.load(f)
+        # 2. Сортируем по дате (убывание: новые сначала)
+        sorted_posts = sorted(posts, key=lambda x: x.get("date", ""), reverse=True)
+        # 3. ФИЛЬТРУЕМ: удаляем посты старше 14 дней
+        now = datetime.now()
+        cutoff_date = now - timedelta(days=14)  # Граница: 14 дней назад
+        filtered_posts = []
+        for post in sorted_posts:
+            try:
+                # Парсим дату поста в формате "YYYY-MM-DD HH:MM:SS"
+                post_date = datetime.strptime(post.get("date", ""), "%Y-%m-%d %H:%M:%S")
+                # Оставляем только посты новее границы
+                if post_date >= cutoff_date:
+                    filtered_posts.append(post)
+            except (ValueError, TypeError):
+                # Если дата некорректная — пропускаем пост
+                continue
+        # 4. Сохраняем обратно в файл
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(filtered_posts, f, ensure_ascii=False, indent=2)
+        return filtered_posts
+    except Exception as e:
+        logis.err.info(f"sort_posts_by_date в json_file/work_json.py сорт удаление json: Exception as e : {e}")
 
 
 # -------------КОНЕЦ СОРТИРОВКА JSON ПО ВРЕМЕНИ ----------------
