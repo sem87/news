@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 import feedparser
 import requests
 
+from json_file.work_json import save_posts_with_check
 from logi import logis
 from news_config import (
     RBK_TIMEOUT,
@@ -18,6 +20,8 @@ from pydant.pydantics import ParsTextRbk, UfaRbkRss
 
 # ссылки на источник
 RBK_RSS_URL = ["https://rssexport.rbc.ru/rbcnews/news/30/full.rss"]
+BASE_DIR = Path(__file__).parent.parent
+OUTPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
 
 
 def fetch_rbk_rss(timeout: float = RBK_TIMEOUT, rbc_rss_url: str = []) -> list[dict[str, Any]]:
@@ -36,9 +40,6 @@ def fetch_rbk_rss(timeout: float = RBK_TIMEOUT, rbc_rss_url: str = []) -> list[d
     for entry in getattr(feed, "entries", []) or []:
         items.append(entry)
     return items
-
-
-# -------------НАЧАЛО ПЕРЕРАБОТКИ В НУЖНЫЙ СЛОВАРЬ-----------
 
 
 def message_to_dict(msg: dict) -> dict:
@@ -64,18 +65,16 @@ def message_to_dict(msg: dict) -> dict:
         logis.err.info(f"message_to_dict() в parser/news_collector_RBK конверт в словарь: Exception as e : {e}")
 
 
-# -------------НАЧАЛО ПЕРЕРАБОТКИ В НУЖНЫЙ СЛОВАРЬ-----------
-
-
 def main_news_collector_rbk() -> None:
     """Точка входа при запуске: news_collector_RBK.py"""
+    logis.inf.info("=====НАЧАЛО ПАРСИНГА РБК RSS ======")
     for rbc_rss_url in RBK_RSS_URL:
         time.sleep(1)  # Пауза между тикерами
         clean_posts = []
         for msg in fetch_rbk_rss(rbc_rss_url=rbc_rss_url):
-            print("===============")
             clean_posts.append(message_to_dict(msg=msg))  # добавляем в уже обработанные посты
-            print(message_to_dict(msg=msg))
+            save_posts_with_check(clean_posts, filename=str(OUTPUT_FILE), signature_length=10)  # свер первые 10 симв
+            # print(message_to_dict(msg=msg))
             time.sleep(1)
 
 
