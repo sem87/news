@@ -52,6 +52,7 @@ EMOJI_PATTERN = re.compile(
 class ParsTextT(BaseModel):
     """ОЧИСТКА ТЕКСТА ДЛЯ ПОСТА ИЗ ПУЛЬСА"""
 
+    """переделать"""
     text_after: str
 
     @field_validator("text_after", mode="before")
@@ -119,6 +120,7 @@ class ParsTextT(BaseModel):
 class ParsTextTnews(BaseModel):
     """Модель для очистки текста новости Т-Инвестиций"""
 
+    """переделать"""
     text_after: str
 
     @field_validator("text_after", mode="before")
@@ -214,12 +216,12 @@ class UfaDate(BaseModel):
     @property
     def datetime_obj(self) -> datetime | None:
         """Возвращает как datetime объект"""
-        if self.date:
-            try:
-                return datetime.strptime(self.date, "%Y-%m-%d %H:%M:%S")
-            except (ValueError, TypeError, AttributeError) as e:
-                logi.err.info(f"datetime() в pydant/pydantics.py возвращает как datetime объект, e : {e}")
-        return None
+        try:
+            date_str = self.date()
+            return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError, AttributeError) as e:
+            logi.err.info(f"datetime() в pydant/pydantics.py возвращает как datetime объект, e : {e}")
+            return None
 
     def __str__(self) -> str:
         """Позволяет использовать объект как строку"""
