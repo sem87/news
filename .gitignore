@@ -62,6 +62,7 @@ env.wallet
 .env.example
 env.example
 env.news
+predvaritelno_news.json
 token.pickle
 credentials.json
 .env.*.local

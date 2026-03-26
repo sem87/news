@@ -1,6 +1,8 @@
-# from json_file.work_json import sort_posts_by_date
+from json_file.work_json import sort_posts_by_date
 from parser.t_news_parser import main_t_news_parser
-from parser.t_pulse_parser import sort_posts_by_date
+
+
+# from parser.t_pulse_parser import sort_posts_by_date
 
 
 if __name__ == "__main__":
