@@ -1,3 +1,4 @@
+# news\news_collector
 """
 Сбор и классификация новостей РБК за последние 7 дней.
 Алгоритм: 1) прямые упоминания тикеров 2) отраслевые 3) макро 4) общая новость.
@@ -7,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -16,80 +18,13 @@ import requests
 from config import TICKERS
 from news_config import (
     MACRO_KEYWORDS,
+    NEWS_DAYS,
+    RBK_RSS_URL,
+    RBK_TIMEOUT,
     SECTOR_KEYWORDS,
     TICKER_KEYWORDS,
     NewsImpact,
 )
-
-
-# RSS РБК (главные новости, полный текст)
-RBK_RSS_URL = "https://rssexport.rbc.ru/rbcnews/news/100/full.rss"
-
-# Таймаут запроса к РБК (сек)
-RBK_TIMEOUT = 15
-
-# Количество дней новостей
-NEWS_DAYS = 7
-
-
-def _strip_html(text: str) -> str:
-    """Убирает HTML/CDATA и лишние пробелы для поиска ключевых слов."""
-    if not text:
-        return ""
-    # Убираем CDATA
-    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", text, flags=re.DOTALL)
-    # Убираем теги
-    text = re.sub(r"<[^>]+>", " ", text)
-    # Нормализуем пробелы
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def _parse_pubdate(entry: Any) -> datetime | None:
-    """Парсит дату публикации из элемента RSS."""
-    if hasattr(entry, "published_parsed") and entry.published_parsed:
-        try:
-            from time import mktime
-
-            return datetime.fromtimestamp(mktime(entry.published_parsed), tz=UTC)
-        except (TypeError, OSError):
-            pass
-    if getattr(entry, "published", None):
-        try:
-            # "Sun, 15 Mar 2026 06:36:59 +0300"
-            return datetime.strptime(
-                entry.published.replace(" +0300", "").replace(" +0000", ""),
-                "%a, %d %b %Y %H:%M:%S",
-            ).replace(tzinfo=UTC)
-        except ValueError:
-            pass
-    return None
-
-
-def _get_text(entry: Any) -> str:
-    """Собирает единый текст из title + description для классификации."""
-    parts = []
-    if getattr(entry, "title", None):
-        parts.append(_strip_html(entry.title))
-    if getattr(entry, "description", None):
-        parts.append(_strip_html(entry.description))
-    if getattr(entry, "summary", None):
-        parts.append(_strip_html(entry.summary))
-    return " ".join(parts).lower()
-
-
-def _get_summary(entry: Any, max_len: int = 200) -> str:
-    """Краткое описание новости (до max_len символов)."""
-    raw = ""
-    if getattr(entry, "description", None):
-        raw = _strip_html(entry.description)
-    elif getattr(entry, "summary", None):
-        raw = _strip_html(entry.summary)
-    if not raw and getattr(entry, "title", None):
-        raw = _strip_html(entry.title)
-    if len(raw) <= max_len:
-        return raw
-    return raw[: max_len - 3].rsplit(" ", 1)[0] + "..."
 
 
 def classify_news(text: str) -> tuple[NewsImpact, list[str]]:
@@ -124,13 +59,11 @@ def classify_news(text: str) -> tuple[NewsImpact, list[str]]:
     return NewsImpact.GENERAL, []
 
 
-def fetch_rbk_rss(days: int = NEWS_DAYS, timeout: float = RBK_TIMEOUT) -> list[dict[str, Any]]:
-    """
-    Загружает RSS РБК и возвращает список новостей за последние `days` дней.
-    Каждый элемент: {"date": "YYYY-MM-DD", "title", "summary", "link", "raw_entry"}.
-    """
+def fetch_rbk_rss(days: int = NEWS_DAYS, timeout: float = RBK_TIMEOUT, rbc_rss_url: str = []) -> list[dict[str, Any]]:
+    """Загружает RSS РБК и возвращает список новостей за последние `days` дней.
+    Каждый элемент: {"date": "YYYY-MM-DD", "title", "summary", "link", "raw_entry"}."""
     try:
-        resp = requests.get(RBK_RSS_URL, timeout=timeout)
+        resp = requests.get(rbc_rss_url, timeout=timeout)
         resp.raise_for_status()
         content = resp.content
     except requests.RequestException as e:
@@ -272,8 +205,72 @@ def get_series_with_news(
     return {"series": series}
 
 
+# ------------------ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ НАЧАЛО --------------
+def _strip_html(text: str) -> str:
+    """Убирает HTML/CDATA и лишние пробелы для поиска ключевых слов."""
+    if not text:
+        return ""
+    # Убираем CDATA
+    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", text, flags=re.DOTALL)
+    # Убираем теги
+    text = re.sub(r"<[^>]+>", " ", text)
+    # Нормализуем пробелы
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _parse_pubdate(entry: Any) -> datetime | None:
+    """Парсит дату публикации из элемента RSS."""
+    if hasattr(entry, "published_parsed") and entry.published_parsed:
+        try:
+            from time import mktime
+
+            return datetime.fromtimestamp(mktime(entry.published_parsed), tz=UTC)
+        except (TypeError, OSError):
+            pass
+    if getattr(entry, "published", None):
+        try:
+            # "Sun, 15 Mar 2026 06:36:59 +0300"
+            return datetime.strptime(
+                entry.published.replace(" +0300", "").replace(" +0000", ""),
+                "%a, %d %b %Y %H:%M:%S",
+            ).replace(tzinfo=UTC)
+        except ValueError:
+            pass
+    return None
+
+
+def _get_text(entry: Any) -> str:
+    """Собирает единый текст из title + description для классификации."""
+    parts = []
+    if getattr(entry, "title", None):
+        parts.append(_strip_html(entry.title))
+    if getattr(entry, "description", None):
+        parts.append(_strip_html(entry.description))
+    if getattr(entry, "summary", None):
+        parts.append(_strip_html(entry.summary))
+    return " ".join(parts).lower()
+
+
+def _get_summary(entry: Any, max_len: int = 200) -> str:
+    """Краткое описание новости (до max_len символов)."""
+    raw = ""
+    if getattr(entry, "description", None):
+        raw = _strip_html(entry.description)
+    elif getattr(entry, "summary", None):
+        raw = _strip_html(entry.summary)
+    if not raw and getattr(entry, "title", None):
+        raw = _strip_html(entry.title)
+    if len(raw) <= max_len:
+        return raw
+    return raw[: max_len - 3].rsplit(" ", 1)[0] + "..."
+
+
+# ------------------ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ КОНЕЦ ---------------
+
+
 def main() -> None:
-    """Точка входа при запуске: python news_collector.py"""
+    """Точка входа при запуске: python news_collector_RBK.py"""
 
     print("Сбор новостей РБК за последние 7 дней...")
     try:
@@ -288,7 +285,7 @@ def main() -> None:
         print("\nРезультат (JSON):")
         s = json.dumps(data, ensure_ascii=False, indent=2)
         print(s)
-        with open("semnews.txt", "w", encoding="utf-8") as f:
+        with open("../semnews.txt", "w", encoding="utf-8") as f:
             # 3. Добавляем заголовок с датой
             f.write(f"=== Новости за {datetime.now().strftime('%Y-%m-%d %H:%M')} ===\n\n")
 
@@ -311,4 +308,10 @@ if __name__ == "__main__":
     #     # ensure_ascii=False — чтобы русский текст не превратился в \u043f
     #     # indent=2 — красивые отступы для читаемости
     #     json.dump(s, f, ensure_ascii=False, indent=2)
-    main()
+    for rbc_rss_url in RBK_RSS_URL:
+        print("***********************************************")
+        for n in fetch_rbk_rss(rbc_rss_url=rbc_rss_url):
+            print("===============")
+            print(n)
+            time.sleep(1)
+    # main()

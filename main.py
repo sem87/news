@@ -13,7 +13,7 @@ from pyrogram import Client as TelegramClient
 from pyrogram.enums import ParseMode
 
 from config import TICKERS
-from news_collector import collect_news_for_tickers
+from parser.news_collector_RBK import collect_news_for_tickers
 
 
 load_dotenv(".env.news")

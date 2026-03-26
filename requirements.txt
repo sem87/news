@@ -4,3 +4,4 @@ openai>=1.40.0
 feedparser>=6.0.0
 pyrogram==2.0.106
 pytest==7.4.0
+pydantic==2.12.5
