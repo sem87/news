@@ -52,6 +52,8 @@ books.db
 # — раскомментируйте строку ниже:
 # database.db
 # === Secrets & Config ===
+error_pars.log
+info_pars.log
 .env
 .env.local
 .env.ter
