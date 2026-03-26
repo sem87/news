@@ -142,26 +142,7 @@ MACRO_KEYWORDS = {
         "Минфин",
     ],
 }
-# ссылки на источник
-# RSS РБК (главные новости, полный текст)
-RBK_RSS_URL = [
-    "https://rssexport.rbc.ru/rbcnews/news/100/full.rss",
-    "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
-    "https://www.rbc.ru/quote",
-]
 
-
-# #🔗 Первые ссылки:
-#    https://www.rbc.ru/
-#    https://www.rbc.ru/quote
-#    https://www.rbc.ru/story/68822f889a79475439ba67bb?from=topline
-#    https://pro.rbc.ru/?from=topline_main
-#    https://www.rbc.ru/quote?utm_source=topline
-#    https://events.rbc.ru/?utm_source=topline
-#    https://www.rbc.ru/industries?utm_source=topline
-#    https://realty.rbc.ru/?utm_source=topline
-#    https://www.autonews.ru/?utm_source=topline
-#    https://companies.rbc.ru/?utm_source=topline
 
 # Таймаут запроса к РБК (сек)
 RBK_TIMEOUT = 15

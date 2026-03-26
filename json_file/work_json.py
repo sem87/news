@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-from logi import logi
+from logi import logis
 
 
 # from pydant.pydantics import *  # ParsText
@@ -75,7 +75,7 @@ def save_posts_with_check(new_posts: list[dict], filename: str, signature_length
         all_posts = existing_posts + posts_to_save
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(all_posts, f, ensure_ascii=False, indent=2, default=str)
-        logi.inf.info(f"💾 Сохранено {stats['added']} новых постов в {filename}")
+        logis.inf.info(f"💾 Сохранено {stats['added']} новых постов в {filename}")
     else:
         pass
         # logi.inf.info(f"ℹ️ Нет новых постов для сохранения")

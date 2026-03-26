@@ -1,13 +1,13 @@
 # pydant/pydantics.py
-
+import html
 import re
 import unicodedata
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, computed_field, field_validator
 
-from logi import logi
+from logi import logis
 
 
 SPACE_LIKE_CHARS = [
@@ -47,6 +47,50 @@ EMOJI_PATTERN = re.compile(
     "]+",
     flags=re.UNICODE,
 )
+
+# 🔹 Глобальные константы — компилируем один раз
+RE_TICKER = re.compile(r"\{\$([A-Z0-9@_./-]+)\}")
+RE_HASHTAG = re.compile(r"#\w+")
+RE_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+RE_URL = re.compile(r"https?://[^\s]+")
+RE_MULTI_SPACE = re.compile(r" {2,}")
+RE_PUNCT_BEFORE = re.compile(r"\s+([.,:;!?])")
+RE_PUNCT_AFTER = re.compile(r"([.,:;!?])([^\s])")
+
+# Стоп-фразы РБК + дисклеймеры (регистронезависимый поиск)
+STOP_PHRASES = [
+    "не иир",
+    "не является иир",
+    "иир",
+    "не инвестиционная рекомендация",
+    "оставайтесь на связи с рбк",
+    "материал дополняется",
+]
+RE_STOP_PHRASES = re.compile(r"(" + "|".join(map(re.escape, STOP_PHRASES)) + r").*$", flags=re.I)
+
+# Символы для замены/удаления
+SPACE_LIKE_CHARS = {
+    "\u00a0",
+    "\u2000",
+    "\u2001",
+    "\u2002",
+    "\u2003",
+    "\u2004",
+    "\u2005",
+    "\u2006",
+    "\u2007",
+    "\u2008",
+    "\u2009",
+    "\u200a",
+    "\u202f",
+    "\u205f",
+    "\u3000",
+}
+INVISIBLE_CHARS = {"\u200b", "\u200c", "\u200d", "\ufeff"}
+
+# Таблицы для str.translate (создаём один раз)
+_DELETE_TABLE = str.maketrans("", "", "".join(INVISIBLE_CHARS))
+_REPLACE_TABLE = str.maketrans({char: " " for char in SPACE_LIKE_CHARS})
 
 
 class ParsTextT(BaseModel):
@@ -189,6 +233,50 @@ class ParsTextTnews(BaseModel):
         return self.text_after
 
 
+class ParsTextRbk(BaseModel):
+    """Модель для очистки текста новости РБК"""
+
+    text: str  # Простое поле — без лишних проперти
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def clean_text(cls, v: Any) -> str:
+        if not v:
+            return ""
+
+        text = str(v)
+
+        # 🔹 0. Декодируем HTML-сущности: &nbsp; → пробел, &laquo; → « и т.д.
+        text = html.unescape(text)
+
+        # 🔹 1. Быстрая замена символов через translate
+        text = text.translate(_DELETE_TABLE)  # Удаляем невидимые
+        text = text.translate(_REPLACE_TABLE)  # Заменяем пробелоподобные на " "
+
+        # 🔹 2. Нормализация Юникод + удаление эмодзи
+        text = unicodedata.normalize("NFKC", text)
+        text = EMOJI_PATTERN.sub("", text)
+
+        # 🔹 3. Структурная очистка
+        text = RE_TICKER.sub(r"\1", text)  # {$SBER} → SBER
+        text = RE_HASHTAG.sub("", text)  # #слово → ''
+        text = RE_MD_LINK.sub(r"\1", text)  # [text](url) → text
+        text = RE_URL.sub("", text)  # http... → ''
+
+        # 🔹 4. Удаляем стоп-фразы (всё, начиная с первой найденной)
+        text = RE_STOP_PHRASES.sub("", text)
+
+        # 🔹 5. Финальная нормализация пробелов и пунктуации
+        text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+        text = RE_MULTI_SPACE.sub(" ", text)  # Множественные пробелы → один
+        text = RE_PUNCT_BEFORE.sub(r"\1", text)  # "текст ." → "текст."
+        text = RE_PUNCT_AFTER.sub(r"\1 \2", text)  # "текст.Далее" → "текст. Далее"
+
+        if len(text) > 500:
+            text = text[:497] + "..."
+        return text.strip()
+
+
 class UfaDate(BaseModel):
     """МОДЕЛЬ КОНВЕРТАЦИИ UTC В УФИМСКОЕ ВРЕМЯ"""
 
@@ -210,7 +298,7 @@ class UfaDate(BaseModel):
             # Форматируем в читаемый вид
             return dt_ufa.strftime("%Y-%m-%d %H:%M:%S")
         except (ValueError, TypeError, AttributeError) as e:
-            logi.err.info(f"date() в pydant/pydantics.py utc в уфимское время, e : {e}")
+            logis.err.info(f"date() в pydant/pydantics.py utc в уфимское время, e : {e}")
             return None
 
     @property
@@ -220,9 +308,69 @@ class UfaDate(BaseModel):
             date_str = self.date()
             return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         except (ValueError, TypeError, AttributeError) as e:
-            logi.err.info(f"datetime() в pydant/pydantics.py возвращает как datetime объект, e : {e}")
+            logis.err.info(f"datetime() в pydant/pydantics.py возвращает как datetime объект, e : {e}")
             return None
 
     def __str__(self) -> str:
         """Позволяет использовать объект как строку"""
         return self.date or ""
+
+
+class UfaRbkRss(BaseModel):
+    """МОДЕЛЬ КОНВЕРТАЦИИ ДАТЫ В УФИМСКОЕ ВРЕМЯ (UTC+5)"""
+
+    raw_date: str
+
+    @field_validator("raw_date", mode="before")
+    @classmethod
+    def normalize_raw_date(cls, v):
+        """Приводим входное значение к строке"""
+        if not v:
+            return ""
+        return str(v).strip()
+
+    @computed_field(return_type=str | None)
+    @property
+    def date(self) -> str | None:
+        """Конвертирует дату в формат YYYY-MM-DD HH:MM:SS с учётом часового пояса Уфы (UTC+5)"""
+        if not self.raw_date:
+            return None
+
+        try:
+            # 🔹 1. Парсим дату в формате "ДД.ММ.ГГГГ ЧЧ:ММ:СС"
+            # Если формат другой — пробуем ISO
+            if re.match(r"\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}", self.raw_date):
+                dt = datetime.strptime(self.raw_date, "%d.%m.%Y %H:%M:%S")
+                # Считаем, что входная дата уже в местном времени (или UTC — уточните логику)
+                # Если это UTC, добавляем timezoneinfo:
+                dt = dt.replace(tzinfo=UTC)
+            else:
+                # Пробуем ISO-формат как запасной вариант
+                dt = datetime.fromisoformat(self.raw_date.replace("Z", "+00:00"))
+
+            # 🔹 2. Конвертируем в уфимское время (UTC+5)
+            ufa_tz = timezone(timedelta(hours=2))
+            dt_ufa = dt.astimezone(ufa_tz)
+
+            # 🔹 3. Форматируем результат
+            return dt_ufa.strftime("%Y-%m-%d %H:%M:%S")
+
+        except (ValueError, TypeError, AttributeError) as e:
+            logis.err.info(f"date() в UfaDate: ошибка парсинга '{self.raw_date}', e: {e}")
+            return None
+
+    @property
+    def datetime_obj(self) -> datetime | None:
+        """Возвращает как datetime-объект (уже в уфимском времени)"""
+        date_str = self.date  # 🔹 computed_field вызывается БЕЗ скобок!
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError) as e:
+            logis.err.info(f"datetime_obj в UfaDate: ошибка, e: {e}")
+            return None
+
+    def __str__(self) -> str:
+        """Позволяет использовать объект как строку"""
+        return self.date or ""  # 🔹 self.date — свойство, не метод!

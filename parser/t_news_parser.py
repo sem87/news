@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 
 from json_file.work_json import save_posts_with_check
-from logi import logi
+from logi import logis
 from news_config import TICKERS
 from pydant.pydantics import ParsTextTnews, UfaDate
 
@@ -57,7 +57,7 @@ class TinkoffOfficialNewsParser:
                 return data["payload"]
             return {}
         except Exception as e:
-            logi.err.info(f"get_feed() в parser/t_news_parser.py Ошибка: {type(e).__name__}, Exception as e : {e}")
+            logis.err.info(f"get_feed() в parser/t_news_parser.py Ошибка: {type(e).__name__}, Exception as e : {e}")
             return {}
 
     def parse_all_posts(self, ticker: str, max_pages: int = 5):
@@ -79,8 +79,10 @@ class TinkoffOfficialNewsParser:
                 page += 1
                 time.sleep(1)  # Вежливая задержка
             except Exception as e:
-                logi.err.info(f"parse_all_posts() в parser/t_news_parser.py ошибка сбора новости: Exception as e : {e}")
-        logi.inf.info(f"✅ {ticker}: найдено {len(all_news)} новостей")
+                logis.err.info(
+                    f"parse_all_posts() в parser/t_news_parser.py ошибка сбора новости: Exception as e : {e}"
+                )
+        logis.inf.info(f"✅ {ticker}: найдено {len(all_news)} новостей")
         return all_news
 
     def close(self):
@@ -107,12 +109,14 @@ def message_to_dict(msg: dict) -> dict:
         # Возвращаем готовый словарь
         return {"date": date, "text": text, "ticker": tickers, "hashtags": []}
     except Exception as e:
-        logi.err.info(f"message_to_dict() в parser/t_news_parser.py ошибка конвертации в словарь: Exception as e : {e}")
+        logis.err.info(
+            f"message_to_dict() в parser/t_news_parser.py ошибка конвертации в словарь: Exception as e : {e}"
+        )
 
 
 def main_t_news_parser():
     """ТОЧКА ВХОДА"""
-    logi.inf.info("=====НАЧАЛО ПАРСИНГА НОВОСТИ Т-ИНВЕСТИЦИИ ======")
+    logis.inf.info("=====НАЧАЛО ПАРСИНГА НОВОСТИ Т-ИНВЕСТИЦИИ ======")
     api = TinkoffOfficialNewsParser()
     try:
         for tik in TICKERS:
@@ -124,7 +128,7 @@ def main_t_news_parser():
                 clean_posts, filename=str(OUTPUT_FILE), signature_length=10
             )  # сверяем по первые 10 символов и добавляем в JSON
     except Exception as e:
-        logi.err.info(f"main_t_news_parser() в parser/t_news_parser.py ошибка точки входа: Exception as e : {e}")
+        logis.err.info(f"main_t_news_parser() в parser/t_news_parser.py ошибка точки входа: Exception as e : {e}")
     finally:
         api.close()
 
