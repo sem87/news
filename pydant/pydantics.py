@@ -1,4 +1,4 @@
-# parser/text_processor.py
+# pydant/pydantics.py
 
 import re
 import unicodedata
@@ -7,8 +7,9 @@ from typing import Any
 
 from pydantic import BaseModel, computed_field, field_validator
 
+from logi import logi
 
-# 🔹 НЕ удаляем эти символы — они заменяются на обычный пробел!
+
 SPACE_LIKE_CHARS = [
     "\u00a0",  # неразрывный пробел
     "\u2000",
@@ -27,7 +28,7 @@ SPACE_LIKE_CHARS = [
     "\u3000",  # идеографический пробел
 ]
 
-# 🔹 Эти символы действительно удаляем (они не несут смысла)
+
 INVISIBLE_CHARS = [
     "\u200b",  # zero-width space
     "\u200c",  # zero-width non-joiner
@@ -49,12 +50,7 @@ EMOJI_PATTERN = re.compile(
 
 
 class ParsTextT(BaseModel):
-    """
-    Модель для очистки текста поста из Пульса.
-    Использование:
-        text_obj = ParsTextT(text_after=raw_text)
-        clean_text = text_obj.text  # ← Готовый обработанный текст
-    """
+    """ОЧИСТКА ТЕКСТА ДЛЯ ПОСТА ИЗ ПУЛЬСА"""
 
     text_after: str
 
@@ -63,22 +59,16 @@ class ParsTextT(BaseModel):
     def clean_text(cls, v: Any) -> str:
         if not v:
             return ""
-
         text = str(v)
-
         # 1. Невидимые символы
         for char in INVISIBLE_CHARS:
             text = text.replace(char, "")
-
         # 2. Эмодзи
         text = EMOJI_PATTERN.sub("", text)
-
         # 3. Тикеры {$TICKER} → TICKER
         text = re.sub(r"\{\$([A-Z0-9@_]+)\}", r"\1", text)
-
         # 4. Хэштэги #слово → пробел
         text = re.sub(r"#\w+", " ", text)
-
         # 5. Стоп-фразы (дисклеймеры)
         stop_phrases = [
             "не иир",
@@ -96,34 +86,26 @@ class ParsTextT(BaseModel):
             "следующего поста",
             "Новые идеи доступны",
         ]
-
         text_lower = text.lower()
         for phrase in stop_phrases:
             idx = text_lower.find(phrase)
             if idx != -1:
                 text = text[:idx].strip()
                 break
-
         # 6. Ссылки
         text = re.sub(r"https?://[^\s]+", "", text)
-
         # 7. Пробелы
         text = re.sub(r" +", " ", text)
         text = re.sub(r"\n\s*\n", " ", text)
         text = text.replace("\n", "")
         text = text.replace("\r", "")
-
         # 8. Финал
         text = text.strip()
-
         # 9. 900 символов
-
         if len(text) > 900:
             text = text[:897] + "..."
-
         elif len(text) < 100:
             text = ""
-
         return text
 
     @property
@@ -205,49 +187,38 @@ class ParsTextTnews(BaseModel):
         return self.text_after
 
 
-class MoscowDate(BaseModel):
-    """
-    Модель для конвертации UTC даты в московское время.
-
-    Использование:
-        date_obj = MoscowDate(raw_date="2026-03-24T03:54:28.983Z")
-        print(date_obj.date)  # "2026-03-24 06:54:28"
-    """
+class UfaDate(BaseModel):
+    """МОДЕЛЬ КОНВЕРТАЦИИ UTC В УФИМСКОЕ ВРЕМЯ"""
 
     raw_date: str
 
     @computed_field
-    @property
+    # @property
     def date(self) -> str | None:
-        """Конвертирует UTC дату в московское время"""
+        """UTC В УФИМСКОЕ ВРЕМЯ"""
         if not self.raw_date:
             return None
-
         try:
             # Заменяем Z на +00:00 для корректного парсинга
             dt = datetime.fromisoformat(self.raw_date.replace("Z", "+00:00"))
-
-            # Создаём московскую часовую зону (UTC+3)
-            moscow_tz = timezone(timedelta(hours=3))
-
-            # Конвертируем в московское время
-            dt_moscow = dt.astimezone(moscow_tz)
-
+            # Создаём часовую зону (UTC+5)
+            ufa_tz = timezone(timedelta(hours=5))
+            # Конвертируем время
+            dt_ufa = dt.astimezone(ufa_tz)
             # Форматируем в читаемый вид
-            return dt_moscow.strftime("%Y-%m-%d %H:%M:%S")
-
-        except Exception:
-            # Если ошибка — возвращаем как есть
-            return self.raw_date
+            return dt_ufa.strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError, AttributeError) as e:
+            logi.err.info(f"date() в pydant/pydantics.py utc в уфимское время, e : {e}")
+            return None
 
     @property
-    def datetime(self) -> datetime | None:
+    def datetime_obj(self) -> datetime | None:
         """Возвращает как datetime объект"""
         if self.date:
             try:
                 return datetime.strptime(self.date, "%Y-%m-%d %H:%M:%S")
-            except ValueError:  # <-- Указываем конкретный тип исключения
-                return None
+            except (ValueError, TypeError, AttributeError) as e:
+                logi.err.info(f"datetime() в pydant/pydantics.py возвращает как datetime объект, e : {e}")
         return None
 
     def __str__(self) -> str:

@@ -7,7 +7,7 @@ import httpx
 from json_file.work_json import save_posts_with_check
 from logi import logi
 from news_config import TICKERS
-from pydant.pydantics import MoscowDate, ParsTextTnews
+from pydant.pydantics import ParsTextTnews, UfaDate
 
 
 BASE_DIR = Path(__file__).parent.parent
@@ -92,7 +92,7 @@ def message_to_dict(msg: dict) -> dict:
     try:
         # 1. Обработка даты
         raw_date = msg.get("inserted", "")
-        date = MoscowDate(raw_date=raw_date).date
+        date = UfaDate(raw_date=raw_date).date
         # 2. Обработка текста
         content = msg.get("content", {})
         title = content.get("title", "")
