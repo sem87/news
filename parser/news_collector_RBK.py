@@ -70,7 +70,7 @@ def message_to_dict(msg: dict) -> dict:
 def main_news_collector_rbk() -> None:
     """Точка входа при запуске: news_collector_RBK.py"""
     try:
-        logis.inf.info("=====НАЧАЛО ПАРСИНГА РБК RSS ======")
+        logis.inf.info("НАЧАЛО ПАРСИНГА РБК RSS")
         for rbc_rss_url in RBK_RSS_URL:
             time.sleep(1)  # Пауза между тикерами
             clean_posts = []

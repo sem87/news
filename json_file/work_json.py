@@ -106,6 +106,7 @@ def save_posts_with_check(new_posts: list[dict], filename, signature_length: int
 
 
 # -------------НАЧАЛО СОРТИРОВКА JSON ПО ВРЕМЕНИ ---------------
+# predvaritelno_news.json
 def sort_posts_by_date(input_file, output_file) -> list:  # : str = OUTPUT_FILE  ,: str = OUTPUT_FILE
     """СОРТИРУЕТ ПОСТЫ ПО ДАТЕ (сначало новые) УДАЛЯЕТ ЕСЛИ БОЛЬШЕ 14 ДНЕЙ"""
     try:
@@ -132,6 +133,41 @@ def sort_posts_by_date(input_file, output_file) -> list:  # : str = OUTPUT_FILE 
         return filtered_posts
     except Exception as e:
         logis.err.info(f"sort_posts_by_date в json_file/work_json.py сорт удаление json: Exception as e : {e}")
+
+
+# сортирует и удаляет news_by_ticker.json
+def sort_news_by_ticker(input_file, output_file) -> dict:
+    """СОРТИРУЕТ ПОСТЫ ПО ДАТЕ (сначала новые) ДЛЯ КАЖДОГО ТИКЕРА,УДАЛЯЕТ ПОСТЫ СТАРШЕ 14 ДНЕЙ"""
+    try:
+        # Загружаем данные: структура {ticker: [posts]}
+        data = load_existing_posts(filename=input_file)
+        now = datetime.now()
+        cutoff_date = now - timedelta(days=14)  # Граница: 14 дней назад
+        filtered_data = {}
+        for ticker, posts in data.items():
+            # Сортируем посты тикера по дате (убывание: новые сначала)
+            sorted_posts = sorted(posts, key=lambda x: x.get("date", ""), reverse=True)
+            # Фильтруем: оставляем только посты новее 14 дней
+            filtered_posts = []
+            for post in sorted_posts:
+                try:
+                    # Парсим дату поста в формате "YYYY-MM-DD HH:MM:SS"
+                    post_date = datetime.strptime(post.get("date", ""), "%Y-%m-%d %H:%M:%S")
+                    # Оставляем пост, если он новее границы
+                    if post_date >= cutoff_date:
+                        filtered_posts.append(post)
+                except (ValueError, TypeError):
+                    # Если дата некорректная — пропускаем пост
+                    continue
+
+            # Сохраняем отфильтрованный список для тикера
+            filtered_data[ticker] = filtered_posts
+        # Сохраняем результат обратно в файл
+        save_file(output_file=output_file, filtered_posts=filtered_data)
+        return filtered_data
+    except Exception as e:
+        logis.err.info(f"sort_news_by_ticker() в json_file/work_json.py: ошибка при сортировке/фильтрации: {e}")
+        return {}
 
 
 # -------------КОНЕЦ СОРТИРОВКА JSON ПО ВРЕМЕНИ ----------------

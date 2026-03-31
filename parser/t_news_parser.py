@@ -84,7 +84,7 @@ class TinkoffOfficialNewsParser:
                 logis.err.info(
                     f"parse_all_posts() в parser/t_news_parser.py ошибка сбора новости: Exception as e : {e}"
                 )
-        logis.inf.info(f"✅ {ticker}: найдено {len(all_news)} новостей")
+        # logis.inf.info(f"✅ {ticker}: найдено {len(all_news)} новостей")
         return all_news
 
     def close(self):
@@ -118,7 +118,7 @@ def message_to_dict(msg: dict) -> dict:
 
 def main_t_news_parser():
     """ТОЧКА ВХОДА"""
-    logis.inf.info("=====НАЧАЛО ПАРСИНГА НОВОСТИ Т-ИНВЕСТИЦИИ ======")
+    logis.inf.info("НАЧАЛО ПАРСИНГА НОВОСТИ Т-ИНВЕСТИЦИИ")
     api = TinkoffOfficialNewsParser()
     try:
         for tik in TICKERS:
