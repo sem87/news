@@ -18,10 +18,12 @@ from news_config import (
 from pydant.pydantics import ParsTextRbk, UfaRbkRss
 
 
+# В начале файла:
+BASE_DIR = Path(__file__).parent.parent  # news/
+INPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+OUTPUT_FILE = BASE_DIR / "json_file" / "news_by_ticker.json"
 # ссылки на источник
 RBK_RSS_URL = ["https://rssexport.rbc.ru/rbcnews/news/30/full.rss"]
-BASE_DIR = Path(__file__).parent.parent
-OUTPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
 
 
 def fetch_rbk_rss(timeout: float = RBK_TIMEOUT, rbc_rss_url: str = []) -> list[dict[str, Any]]:
@@ -75,7 +77,7 @@ def main_news_collector_rbk() -> None:
             for msg in fetch_rbk_rss(rbc_rss_url=rbc_rss_url):
                 clean_posts.append(message_to_dict(msg=msg))  # добавляем в уже обработанные посты
                 time.sleep(1)
-            save_posts_with_check(clean_posts, filename=str(OUTPUT_FILE), signature_length=10)  # свер первые 10 симв
+            save_posts_with_check(clean_posts, filename=str(INPUT_FILE), signature_length=10)  # свер первые 10 симв
     except Exception as e:
         logis.err.info(f"main_news_collector_rbk в parser/news_collector_RBK точка входа: Exception as e : {e}")
 

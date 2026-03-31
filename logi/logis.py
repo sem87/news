@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 # Создаем папку для логов
-Path("logi/info").mkdir(exist_ok=True)  # ,parents=True
+Path("logi/info").mkdir(exist_ok=True, parents=True)  #
 # нужно что то предпринимать с путем
 
 

@@ -7,58 +7,73 @@ from pathlib import Path
 from logi import logis
 
 
+# from news_config import INPUT_FILE, OUTPUT_FILE
+
 # from pydant.pydantics import *  # ParsText
 
 
 # В начале файла:
 BASE_DIR = Path(__file__).parent.parent  # news/
-OUTPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+INPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+OUTPUT_FILE = BASE_DIR / "json_file" / "news_by_ticker.json"
 
 
 # ============================================================
 # 💾 ФУНКЦИИ СОХРАНЕНИЯ С ПРОВЕРКОЙ ДУБЛИКАТОВ
 # ============================================================
-def load_existing_posts(filename: str) -> list[dict]:
-    """Загружает существующие посты из файла"""
-    if not os.path.exists(filename):
-        return []
+def load_existing_posts(filename: Path) -> list[dict]:
+    """ЗАГРУЖАЕТ ПОСТЫ ИЗ JSON"""
     try:
         with open(filename, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"⚠️ Ошибка загрузки {filename}: {e}")
+        logis.err.info(f"load_existing_posts() в json_file/work_json.py {filename} не загруз, Exception as e : {e}")
         return []
 
 
-def get_text_signature(text: str, length: int = 10) -> str:
-    """Получает сигнатуру текста (первые N символов) для сравнения"""
-    if not text:
+def save_file(output_file, filtered_posts):
+    """СОХРАНЯЕТ ПОСТЫ В JSON (АТОМАРНО, через временный файл)"""
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(filtered_posts, f, ensure_ascii=False, indent=2)
+        return filtered_posts
+    except Exception as e:
+        logis.err.info(f"save_file() в json_file/work_json.py не записали в файл, Exception as e : {e}")
+
+
+def get_text_signature(text: str, length: int = 15) -> str:
+    """ПОЛУЧАЕТ ПЕРВЫЕ length СИМВОЛОВ для сравнения"""
+    try:
+        if not text:
+            return ""
+        return text[:length].strip().lower()
+    except Exception as e:
+        logis.err.info(f"get_text_signature() в json_file/work_json.py ошибка текста, Exception as e : {e}")
         return ""
-    return text[:length].strip().lower()
 
 
 def is_duplicate(new_post: dict, existing_signatures: set, signature_length: int = 10) -> bool:
-    """Проверяет, есть ли пост с такой же сигнатурой"""
-    signature = get_text_signature(new_post.get("text", ""), signature_length)
-    if not signature:
+    """ПРОВЕРЯЕТ, ЕСТЬ ЛИ ТАКОЙ ТЕКСТ"""
+    try:
+        signature = get_text_signature(new_post.get("text", ""), signature_length)
+        if not signature:
+            return False
+        return signature in existing_signatures
+    except Exception as e:
+        logis.err.info(f"is_duplicate() в json_file/work_json.py ошибка в проверке есть ли текст, Exception as e : {e}")
         return False
-    return signature in existing_signatures
 
 
-def save_posts_with_check(new_posts: list[dict], filename: str, signature_length: int = 10) -> dict[str, int]:
-    """
-    Сохраняет посты с проверкой на дубликаты.
-    Returns:
-        dict со статистикой: {'added': int, 'skipped': int, 'total': int}
-    """
-    # 1. Создаём директорию если нет
+def save_posts_with_check(new_posts: list[dict], filename, signature_length: int = 15) -> dict[str, int]:
+    """СОХРАНЯЕТ ПОСТЫ С ПРОВЕРКОЙ НА ДУБЛИКАТЫ"""
+    # Создаём директорию если нет
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    # 2. Загружаем существующие посты и их сигнатуры
+    # Загружаем существующие посты и их сигнатуры
     existing_posts = load_existing_posts(filename)
     existing_signatures = {
         get_text_signature(post.get("text", ""), signature_length) for post in existing_posts if post.get("text")
     }
-    # 3. Фильтруем новые посты
+    # Фильтруем новые посты
     stats = {"added": 0, "skipped": 0, "total": len(new_posts)}
     posts_to_save = []
     for post in new_posts:
@@ -71,11 +86,13 @@ def save_posts_with_check(new_posts: list[dict], filename: str, signature_length
             if sig:
                 existing_signatures.add(sig)
             stats["added"] += 1
-    # 4. Сохраняем только новые
+    # Сохраняем только новые
     if posts_to_save:
         all_posts = existing_posts + posts_to_save
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(all_posts, f, ensure_ascii=False, indent=2, default=str)
+        # Сохраняем обратно в файл
+        save_file(output_file=filename, filtered_posts=all_posts)
+        # with open(filename, "w", encoding="utf-8") as f:
+        #     json.dump(all_posts, f, ensure_ascii=False, indent=2, default=str)
         logis.inf.info(f"💾 Сохранено {stats['added']} новых постов в {filename}")
     else:
         pass
@@ -89,21 +106,20 @@ def save_posts_with_check(new_posts: list[dict], filename: str, signature_length
 
 
 # -------------НАЧАЛО СОРТИРОВКА JSON ПО ВРЕМЕНИ ---------------
-def sort_posts_by_date(input_file: str = OUTPUT_FILE, output_file: str = OUTPUT_FILE) -> list:
+def sort_posts_by_date(input_file, output_file) -> list:  # : str = OUTPUT_FILE  ,: str = OUTPUT_FILE
     """СОРТИРУЕТ ПОСТЫ ПО ДАТЕ (сначало новые) УДАЛЯЕТ ЕСЛИ БОЛЬШЕ 14 ДНЕЙ"""
     try:
-        # 1. Загружаем посты из файла
-        with open(input_file, encoding="utf-8") as f:
-            posts = json.load(f)
-        # 2. Сортируем по дате (убывание: новые сначала)
+        # Загружаем посты из файла
+        posts = load_existing_posts(filename=input_file)
+        # Сортируем по дате (убывание: новые сначала)
         sorted_posts = sorted(posts, key=lambda x: x.get("date", ""), reverse=True)
-        # 3. ФИЛЬТРУЕМ: удаляем посты старше 14 дней
+        # ФИЛЬТРУЕМ: удаляем посты старше 14 дней
         now = datetime.now()
         cutoff_date = now - timedelta(days=14)  # Граница: 14 дней назад
         filtered_posts = []
         for post in sorted_posts:
             try:
-                # Парсим дату поста в формате "YYYY-MM-DD HH:MM:SS"
+                # Узнаем дату поста в формате "YYYY-MM-DD HH:MM:SS"
                 post_date = datetime.strptime(post.get("date", ""), "%Y-%m-%d %H:%M:%S")
                 # Оставляем только посты новее границы
                 if post_date >= cutoff_date:
@@ -111,12 +127,13 @@ def sort_posts_by_date(input_file: str = OUTPUT_FILE, output_file: str = OUTPUT_
             except (ValueError, TypeError):
                 # Если дата некорректная — пропускаем пост
                 continue
-        # 4. Сохраняем обратно в файл
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(filtered_posts, f, ensure_ascii=False, indent=2)
+        # Сохраняем обратно в файл
+        save_file(output_file=output_file, filtered_posts=filtered_posts)
         return filtered_posts
     except Exception as e:
         logis.err.info(f"sort_posts_by_date в json_file/work_json.py сорт удаление json: Exception as e : {e}")
 
 
 # -------------КОНЕЦ СОРТИРОВКА JSON ПО ВРЕМЕНИ ----------------
+if __name__ == "__main__":
+    pass

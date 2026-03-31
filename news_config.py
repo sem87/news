@@ -2,6 +2,7 @@
 # Маппинг "Новость → Акции" для автоматической привязки к тикерам.
 
 from enum import Enum
+from pathlib import Path
 
 from config import TICKERS
 
@@ -167,3 +168,9 @@ TICKERS = [
     "EUTR",
     "IRAO",
 ]
+
+
+# 🔹 Пути к файлам
+BASE_DIR = Path(__file__).parent.parent  # news/
+INPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+OUTPUT_FILE = BASE_DIR / "json_file" / "news_by_ticker.json"

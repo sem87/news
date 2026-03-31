@@ -10,8 +10,10 @@ from news_config import TICKERS
 from pydant.pydantics import ParsTextTnews, UfaDate
 
 
-BASE_DIR = Path(__file__).parent.parent
-OUTPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+# В начале файла:
+BASE_DIR = Path(__file__).parent.parent  # news/
+INPUT_FILE = BASE_DIR / "json_file" / "predvaritelno_news.json"
+OUTPUT_FILE = BASE_DIR / "json_file" / "news_by_ticker.json"
 
 
 class TinkoffOfficialNewsParser:
@@ -125,7 +127,7 @@ def main_t_news_parser():
             for msg in api.parse_all_posts(ticker=tik, max_pages=1):
                 clean_posts.append(message_to_dict(msg=msg))  # добавляем в уже обработанные посты
             save_posts_with_check(
-                clean_posts, filename=str(OUTPUT_FILE), signature_length=10
+                clean_posts, filename=str(INPUT_FILE), signature_length=10
             )  # сверяем по первые 10 символов и добавляем в JSON
     except Exception as e:
         logis.err.info(f"main_t_news_parser() в parser/t_news_parser.py ошибка точки входа: Exception as e : {e}")
