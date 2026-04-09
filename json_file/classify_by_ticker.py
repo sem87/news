@@ -128,7 +128,7 @@ def main_classify_by_ticker():
     try:
         # Запускаем классификацию
         collect_news_for_tickers(
-            input_file=INPUT_FILE, output_file=OUTPUT_FILE, include_general=False
+            input_file=INPUT_FILE, output_file=OUTPUT_FILE
         )  # GENERAL новости не привязываем к тикерам
     except FileNotFoundError as e:
         logis.err.info(f"main_classify_by_ticker() в json_file/classify_by_ticker.py Файл не найден , e : {e}")
