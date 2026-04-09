@@ -91,9 +91,7 @@ def save_posts_with_check(new_posts: list[dict], filename, signature_length: int
         all_posts = existing_posts + posts_to_save
         # Сохраняем обратно в файл
         save_file(output_file=filename, filtered_posts=all_posts)
-        # with open(filename, "w", encoding="utf-8") as f:
-        #     json.dump(all_posts, f, ensure_ascii=False, indent=2, default=str)
-        logis.inf.info(f"💾 Сохранено {stats['added']} новых постов в {filename}")
+        # logis.inf.info(f"💾 Сохранено {stats['added']} новых постов в {filename}")
     else:
         pass
         # logi.inf.info(f"ℹ️ Нет новых постов для сохранения")
@@ -170,6 +168,38 @@ def sort_news_by_ticker(input_file, output_file) -> dict:
         return {}
 
 
+# ========================НАЧАЛО СЧИТЫВАЕМ И ФИЛЬТРУЕМ РЕЗУЛЬТАТЫ================
+def filter_read_json(filename=OUTPUT_FILE):
+    """СЧИТЫВАЕМ И ФИЛЬТРУЕМ РЕЗУЛЬТАТЫ"""
+    try:
+        # Загружаем посты из файла
+        posts = load_existing_posts(filename=filename)
+        result = {}
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        for ticker, values in posts.items():
+            news_text = []
+            for val in values:
+                # if val.get("impact") == "sector":
+                try:
+                    post_date = datetime.strptime(val.get("date", ""), "%Y-%m-%d %H:%M:%S").date()
+                except (ValueError, TypeError):
+                    continue  # Пропускаем, если дата некорректна
+                if post_date in (today, yesterday):
+                    news_text.append(get_text_signature(text=val.get("text"), length=150))
+                # Как только набрали 5 — выходим из цикла (экономим время)
+                if len(news_text) >= 5:
+                    break
+            result[ticker] = news_text[:5]  # ОГРАНИЧИВАЕМ до 3 новостей на тикер
+        return result
+    except Exception as e:
+        logis.err.info(f"filter_read_json() в json_file/work_json.py СЧИТЫВАЕМ И ФИЛЬТРУЕМ: Exception as e : {e}")
+
+
+# ========================КОНЕЦ СЧИТЫВАЕМ И ФИЛЬТРУЕМ РЕЗУЛЬТАТЫ=================
 # -------------КОНЕЦ СОРТИРОВКА JSON ПО ВРЕМЕНИ ----------------
 if __name__ == "__main__":
-    pass
+    news_text = ["sssss", "sssss"]
+    print(len(news_text))
+    # if len(news_text) > 4000:
+    #     news_text = news_text[:3996]

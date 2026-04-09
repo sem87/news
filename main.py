@@ -12,7 +12,7 @@ from openai import OpenAI
 from pyrogram import Client as TelegramClient
 from pyrogram.enums import ParseMode
 
-from config import TICKERS
+from news_config import TICKERS
 from parser.news_collector_RBK import collect_news_for_tickers
 
 

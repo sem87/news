@@ -58,9 +58,10 @@ def message_to_dict(msg: dict) -> dict:
         # hashtags
         tags_list = msg.get("tags")
         if isinstance(tags_list, list) and tags_list and isinstance(tags_list[0], dict):
-            tags = tags_list[0].get("term", "")
+            tag_value = tags_list[0].get("term", "")
+            tags = [tag_value] if tag_value else []  # ← оборачиваем в список
         else:
-            tags = ""
+            tags = []
         # Возвращаем готовый словарь
         return {"date": date, "text": text, "hashtags": tags, "ticker": []}
     except Exception as e:
