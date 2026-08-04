@@ -13,7 +13,7 @@ from pyrogram import Client as TelegramClient
 from pyrogram.enums import ParseMode
 
 from news_config import TICKERS
-from parser.news_collector_RBK import collect_news_for_tickers
+#from parser.news_collector_RBK import collect_news_for_tickers
 
 
 load_dotenv(".env.news")
@@ -232,7 +232,8 @@ def main() -> None:
 
     # Сбор новостей РБК за те же 7 дней
     try:
-        news_by_ticker = collect_news_for_tickers(days=7)
+        pass
+        #news_by_ticker = collect_news_for_tickers(days=7)
     except Exception as e:
         print(f"Новости не загружены (анализ только по свечам): {e}")
         news_by_ticker = None
