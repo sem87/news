@@ -62,7 +62,9 @@ env.news
 token.pickle
 credentials.json
 config/local_settings.py
-
+analysis_udali.json
+chat_history.json
+telega_new.json
 # ==========================================
 # SESSION FILES
 # ==========================================
