@@ -47,6 +47,7 @@ def get_proxy_dict(proxy_url: str | None):
 
 if __name__ == "__main__":
     # =====НАЧАЛО ТЕЛЕГРАММ ДАННЫЕ========
+    # news_by_ticker = {}
     telegram_cl = TelegramClient(
         name="SEM",
         api_id=int(api_iddd) if api_iddd else None,  # 🔧 int!

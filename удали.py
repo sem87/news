@@ -15,14 +15,30 @@ async def analyze_news_file(input_file: str, output_file: str):
         news_data = json.load(f)
 
     # 2. Формируем промпт (это аналог поля "prompt" или "messages" в payload)
+    #  Роль → Задача → Формат вывода → Данные.
     prompt = f"""
-    Ты аналитик новостей. Проанализируй следующие данные и верни СТРОГО валидный JSON 
-    с полями: "summary" (краткая суть), "sentiment" (позитив/негатив/нейтрально), "key_topics" (список тем).
+    Ты строгий финансовый аналитик. Проанализируй предоставленные новости.
+    Твоя задача: вернуть СТРОГО валидный JSON. Никакого текста до или после JSON, никаких markdown-обёрток (```json).
+
+    Если новость не относится ни к одному из целевых тикеров, НЕ добавляй её в вывод.
+    НЕ выдумывай тикеры. Если тикер не очевиден, не включай его.
+
+    Ожидаемая структура JSON (пример):
+    {{
+      "analyzed_news": [
+        {{
+          "ticker": "SBER", 
+          "date": "2026-11-08 14:35:29",
+          "summary": "Краткая суть новости в 1 предложении",
+          "sentiment": "positive", 
+          "key_topics": ["дивиденды", "отчетность"]
+        }}
+      ]
+    }}
 
     Данные для анализа:
     {json.dumps(news_data, ensure_ascii=False, indent=2)}
     """
-
     # 3. Инициализируем клиент (он сам знает, что стучаться на localhost:11434)
     client = AsyncClient(host="http://localhost:11434")
 
@@ -33,12 +49,17 @@ async def analyze_news_file(input_file: str, output_file: str):
         # Внимание: используем .generate(), а не .chat(), так как у нас нет истории диалога!
         # format="json" заставит модель выдать валидный JSON (работает в новых моделях типа qwen2.5, llama3.2)
         response = await client.generate(
-            model="qwen2.5",  # или "llama3.2"
+            model="qwen2.5",
             prompt=prompt,
-            format="json",  # Ключевой параметр для твоей задачи!
-            stream=False  # Ждём весь ответ сразу, а не по словам
+            format="json",
+            stream=False,
+            options={
+                "temperature": 0.1,  # Жёстко гасим креативность, чтобы не было тикера "T"
+                "top_p": 0.9,
+                "num_predict": 2000,
+                "seed": 42  # Для стабильности при отладке
+            }
         )
-
         # 5. Получаем текст ответа
         result_text = response["response"]
 
